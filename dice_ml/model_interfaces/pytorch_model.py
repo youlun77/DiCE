@@ -24,7 +24,7 @@ class PyTorchModel(BaseModel):
 
     def load_model(self):
         if self.model_path != '':
-            self.model = torch.load(self.model_path)
+            self.model = torch.load(self.model_path).to('cuda:0')
 
     def get_output(self, input_instance, model_score=True,
                    transform_data=False, out_tensor=False):
@@ -40,7 +40,7 @@ class PyTorchModel(BaseModel):
             input_tensor = torch.tensor(self.transformer.transform(input_instance).to_numpy()).float()
         out = self.model(input_tensor).float()
         if not out_tensor:
-            out = out.data.numpy()
+            out = out.data.cpu().numpy()
         if model_score is False and self.model_type == ModelTypes.Classifier:
             out = np.round(out)  # TODO need to generalize for n-class classifier
         return out
@@ -53,5 +53,5 @@ class PyTorchModel(BaseModel):
         raise NotImplementedError("Future Support")
 
     def get_num_output_nodes(self, inp_size):
-        temp_input = torch.rand(1, inp_size).float()
+        temp_input = torch.rand(inp_size).float()
         return self.get_output(temp_input).data

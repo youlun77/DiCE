@@ -124,6 +124,38 @@ class CounterfactualExamples:
 
         # original instance
         print('Query instance (original outcome : {0})'.format(self.test_pred))
+        import pandas as pd
+        import numpy as np
+        import torch
+        from sklearn.preprocessing import StandardScaler
+        from data_process import read_selected_data, get_y
+        df = read_selected_data('v014_stage_1.csv', 'controllable_para_v014_14.json', 'ASCVD')
+        y = get_y('controllable_para_v014_14.json', 'ASCVD')
+        target_df = df[y]
+        df = df.drop([y], axis=1)
+        scaler = StandardScaler()
+        X_standardized = scaler.fit_transform(df)
+        y = self.test_instance_df['class']
+        self.test_instance_df = self.test_instance_df.drop(['class'], axis=1)
+        self.test_instance_df = scaler.inverse_transform(self.test_instance_df)
+        self.test_instance_df = pd.DataFrame(self.test_instance_df)
+        self.test_instance_df.columns = [
+            'X_-TACT_TIME_mean',
+            "X_-CONVEYOR_SPEED_mean",
+            "PUMP_high",
+            "PUMP_low",
+            "CLN1_over-etching-ratio",
+            "CLN1_EPT_time",
+            "clean_count",
+            "EPT_clean_count_ratio",
+            "NH3_TREAT_-RF_FREQ-max",
+            "NH3_TREAT_-RF_FREQ-range",
+            "NH3_TREAT_-RF_FREQ-mean",
+            "NP_3_-MFC_VOL_SIH4-range",
+            "VENT_high",
+            "VENT_low",
+        ]
+        self.test_instance_df['class'] = y
         display(self.test_instance_df)  # works only in Jupyter notebook
         self._visualize_internal(display_sparse_df=display_sparse_df,
                                  show_only_changes=show_only_changes,
@@ -131,6 +163,39 @@ class CounterfactualExamples:
 
     def display_df(self, df, show_only_changes):
         from IPython.display import display
+        import pandas as pd
+        import numpy as np
+        import torch
+        from sklearn.preprocessing import StandardScaler
+        from data_process import read_selected_data, get_y
+        origdf = read_selected_data('v014_stage_1.csv', 'controllable_para_v014_14.json', 'ASCVD')
+        y = get_y('controllable_para_v014_14.json', 'ASCVD')
+        target_df = origdf[y]
+        origdf = origdf.drop([y], axis=1)
+        scaler = StandardScaler()
+        X_standardized = scaler.fit_transform(origdf)
+        y = df['class']
+        df = df.drop(['class'], axis=1)
+        df = scaler.inverse_transform(df)
+        df = pd.DataFrame(df)
+        df.columns = [
+            'X_-TACT_TIME_mean',
+            "X_-CONVEYOR_SPEED_mean",
+            "PUMP_high",
+            "PUMP_low",
+            "CLN1_over-etching-ratio",
+            "CLN1_EPT_time",
+            "clean_count",
+            "EPT_clean_count_ratio",
+            "NH3_TREAT_-RF_FREQ-max",
+            "NH3_TREAT_-RF_FREQ-range",
+            "NH3_TREAT_-RF_FREQ-mean",
+            "NP_3_-MFC_VOL_SIH4-range",
+            "VENT_high",
+            "VENT_low",
+        ]
+        df['class'] = y
+        pd.set_option('display.max_rows', None)
         if show_only_changes is False:
             display(df)  # works only in Jupyter notebook
         else:

@@ -6,6 +6,7 @@ import random
 import timeit
 
 import numpy as np
+import pandas as pd
 import torch
 
 from dice_ml import diverse_counterfactuals as exp
@@ -418,7 +419,8 @@ class DicePyTorch(ExplainerBase):
                              init_near_query_instance, tie_random, stopping_threshold, posthoc_sparsity_param,
                              posthoc_sparsity_algorithm, limit_steps_ls):
         """Finds counterfactuals by gradient-descent."""
-        query_instance = self.model.transformer.transform(query_instance).to_numpy()[0]
+        #query_instance = self.model.transformer.transform(query_instance).to_numpy()[0]
+        query_instance = query_instance.to_numpy()[0]
         self.x1 = torch.tensor(query_instance)
 
         # find the predicted value of query_instance
@@ -426,6 +428,7 @@ class DicePyTorch(ExplainerBase):
         if desired_class == "opposite":
             desired_class = 1.0 - np.round(test_pred)
         self.target_cf_class = torch.tensor(desired_class).float()
+        self.target_cf_class = self.target_cf_class.to('cuda:0')
 
         self.min_iter = min_iter
         self.max_iter = max_iter
@@ -461,9 +464,9 @@ class DicePyTorch(ExplainerBase):
         for loop_ix in range(loop_find_CFs):
             # CF init
             if self.total_random_inits > 0:
-                self.initialize_CFs(query_instance, False)
+                self.initialize_CFs(query_instance, False)         #使用隨機初始化會從最小值到最大值之間隨機初始化
             else:
-                self.initialize_CFs(query_instance, init_near_query_instance)
+                self.initialize_CFs(query_instance, init_near_query_instance)   #不是的話會從input instance附近開始初始化
 
             # initialize optimizer
             self.do_optimizer_initializations(optimizer, learning_rate)
@@ -557,25 +560,61 @@ class DicePyTorch(ExplainerBase):
 
         # do inverse transform of CFs to original user-fed format
         cfs = np.array([self.final_cfs[i][0] for i in range(len(self.final_cfs))])
-        final_cfs_df = self.model.transformer.inverse_transform(
-                self.data_interface.get_decoded_data(cfs))
+        # final_cfs_df = self.model.transformer.inverse_transform(
+        #         self.data_interface.get_decoded_data(cfs))
+        final_cfs_df = cfs
+        final_cfs_df = pd.DataFrame(final_cfs_df)
+        final_cfs_df.columns = [
+            'X_-TACT_TIME_mean',
+            "X_-CONVEYOR_SPEED_mean",
+            "PUMP_high",
+            "PUMP_low",
+            "CLN1_over-etching-ratio",
+            "CLN1_EPT_time",
+            "clean_count",
+            "EPT_clean_count_ratio",
+            "NH3_TREAT_-RF_FREQ-max",
+            "NH3_TREAT_-RF_FREQ-range",
+            "NH3_TREAT_-RF_FREQ-mean",
+            "NP_3_-MFC_VOL_SIH4-range",
+            "VENT_high",
+            "VENT_low",
+        ]
         # rounding off to 3 decimal places
         cfs_preds = [np.round(preds.flatten().tolist(), 3) for preds in self.cfs_preds]
         cfs_preds = [item for sublist in cfs_preds for item in sublist]
         final_cfs_df[self.data_interface.outcome_name] = np.array(cfs_preds)
 
-        test_instance_df = self.model.transformer.inverse_transform(
-                self.data_interface.get_decoded_data(query_instance))
+        # test_instance_df = self.model.transformer.inverse_transform(
+        #         self.data_interface.get_decoded_data(query_instance))
+        test_instance_df = query_instance
+        test_instance_df = pd.DataFrame(test_instance_df)
+        test_instance_df.columns = [
+            'X_-TACT_TIME_mean',
+            "X_-CONVEYOR_SPEED_mean",
+            "PUMP_high",
+            "PUMP_low",
+            "CLN1_over-etching-ratio",
+            "CLN1_EPT_time",
+            "clean_count",
+            "EPT_clean_count_ratio",
+            "NH3_TREAT_-RF_FREQ-max",
+            "NH3_TREAT_-RF_FREQ-range",
+            "NH3_TREAT_-RF_FREQ-mean",
+            "NP_3_-MFC_VOL_SIH4-range",
+            "VENT_high",
+            "VENT_low",
+        ]
         test_instance_df[self.data_interface.outcome_name] = np.array(np.round(test_pred, 3))
 
         # post-hoc operation on continuous features to enhance sparsity - only for public data
         if posthoc_sparsity_param is not None and posthoc_sparsity_param > 0 and 'data_df' in self.data_interface.__dict__:
             final_cfs_df_sparse = final_cfs_df.copy()
-            final_cfs_df_sparse = self.do_posthoc_sparsity_enhancement(final_cfs_df_sparse,
-                                                                       test_instance_df,
-                                                                       posthoc_sparsity_param,
-                                                                       posthoc_sparsity_algorithm,
-                                                                       limit_steps_ls)
+            # final_cfs_df_sparse = self.do_posthoc_sparsity_enhancement(final_cfs_df_sparse,
+            #                                                            test_instance_df,
+            #                                                            posthoc_sparsity_param,
+            #                                                            posthoc_sparsity_algorithm,
+            #                                                            limit_steps_ls)
         else:
             final_cfs_df_sparse = None
 
