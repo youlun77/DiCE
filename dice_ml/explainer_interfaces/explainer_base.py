@@ -123,8 +123,8 @@ class ExplainerBase(ABC):
                                  desired_class="opposite", desired_range=None,
                                  permitted_range=None, features_to_vary="all",
                                  stopping_threshold=0.5, posthoc_sparsity_param=0.1,
-                                 proximity_weight=0.2, sparsity_weight=0.2, diversity_weight=5.0,
-                                 categorical_penalty=0.1,
+                                 proximity_weight=0.5, sparsity_weight=0.2, diversity_weight=1.0,
+                                 categorical_penalty=0.1,learning_rate=0.05,
                                  posthoc_sparsity_algorithm="linear", verbose=False, **kwargs):
         """General method for generating counterfactuals.
 
@@ -187,6 +187,9 @@ class ExplainerBase(ABC):
                 query_instance, total_CFs,
                 desired_class=desired_class,
                 desired_range=desired_range,
+                proximity_weight = proximity_weight,
+                diversity_weight = diversity_weight,
+                learning_rate = learning_rate,
                 permitted_range=permitted_range,
                 features_to_vary=features_to_vary,
                 stopping_threshold=stopping_threshold,
@@ -879,8 +882,9 @@ class ExplainerBase(ABC):
                 no_cf_generated = False
                 break
         if no_cf_generated:
-            raise UserConfigValidationException(
-                "No counterfactuals found for any of the query points! Kindly check your configuration.")
+            print("No counterfactuals found for any of the query points! Kindly check your configuration.")
+            # raise UserConfigValidationException(
+            #     "No counterfactuals found for any of the query points! Kindly check your configuration.")
 
     def decode_to_original_labels(self, test_instance_df, final_cfs_df, final_cfs_df_sparse):
         test_instance_df[self.data_interface.outcome_name] = \

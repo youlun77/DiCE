@@ -36,6 +36,17 @@ class DicePyTorch(ExplainerBase):
 
         self.num_output_nodes = self.model.get_num_output_nodes(len(self.data_interface.ohe_encoded_feature_names)).shape[1]
 
+        ########################################################################
+        self.minx = [[-4.52676957, -1.36754473, -3.50481498, -6.07288954, -0.9515337,
+                    -1.61379919, -1.33070394, -1.05114948, -2.70824927, -2.77245177,
+                    -2.93574661,-10.07135875, -5.83895343, -5.03419203]]
+        self.minx = np.array(self.minx)
+        self.maxx = [[2.87645742, 3.02762045, 5.90250158, 38.73991939, 28.6297119, 1.41980238,
+                        2.635179, 2.48068392, 0.66047473, 1.00657318, 7.29665815, 19.96969697,
+                    62.89691161, 38.41514954]]
+        self.maxx = np.array(self.maxx)
+        ########################################################################
+
         # variables required to generate CFs - see generate_counterfactuals() for more info
         self.cfs = []
         self.features_to_vary = []
@@ -112,7 +123,9 @@ class DicePyTorch(ExplainerBase):
             for feature in self.data_interface.continuous_feature_names:
                 self.cont_minx.append(self.data_interface.permitted_range[feature][0])
                 self.cont_maxx.append(self.data_interface.permitted_range[feature][1])
-
+        # print("learning_rate: ",learning_rate)
+        # print("proximity_weight: ",proximity_weight)
+        # print("diversity_weight: ",diversity_weight)
         if [total_CFs, algorithm, features_to_vary] != self.cf_init_weights:
             self.do_cf_initializations(total_CFs, algorithm, features_to_vary)
         if [yloss_type, diversity_loss_type, feature_weights] != self.loss_weights:
@@ -421,7 +434,7 @@ class DicePyTorch(ExplainerBase):
         """Finds counterfactuals by gradient-descent."""
         #query_instance = self.model.transformer.transform(query_instance).to_numpy()[0]
         query_instance = query_instance.to_numpy()[0]
-        self.x1 = torch.tensor(query_instance)
+        self.x1 = torch.tensor(query_instance)   #後面用來計算proximity_loss
 
         # find the predicted value of query_instance
         test_pred = self.predict_fn(torch.tensor(query_instance).float())[0]
@@ -535,6 +548,9 @@ class DicePyTorch(ExplainerBase):
 
         self.cfs_preds = [self.predict_fn(cfs) for cfs in self.final_cfs]
 
+        # print("query_instance",query_instance)
+        # print("test_pred: ",test_pred)
+        print()
         # update final_cfs from backed up CFs if valid CFs are not found
         if ((self.target_cf_class == 0 and any(i[0] > self.stopping_threshold for i in self.cfs_preds)) or
            (self.target_cf_class == 1 and any(i[0] < self.stopping_threshold for i in self.cfs_preds))):
@@ -543,6 +559,9 @@ class DicePyTorch(ExplainerBase):
                     for ix in range(self.total_CFs):
                         self.final_cfs[loop_ix+ix] = copy.deepcopy(self.best_backup_cfs[loop_ix+ix])
                         self.cfs_preds[loop_ix+ix] = copy.deepcopy(self.best_backup_cfs_preds[loop_ix+ix])
+
+        # print("self.final_cfs: ",self.final_cfs)
+        print("self.cfs_preds: ",self.cfs_preds)
 
         # convert to the format that is consistent with dice_tensorflow
         query_instance = np.array([query_instance], dtype=np.float32)
